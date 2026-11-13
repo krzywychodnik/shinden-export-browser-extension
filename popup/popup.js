@@ -1,6 +1,7 @@
 import { generateMalXml, MAL_STATUSES } from '../src/mal-xml.js';
 
 const STATE_KEY = 'shindenExporterState_v1';
+const JOB_KEY = 'shindenMatchJob_v1';
 
 const els = {
   userBadge: document.getElementById('userBadge'),
@@ -52,9 +53,39 @@ async function saveState() {
 }
 
 async function loadState() {
-  const data = await chrome.storage.local.get(STATE_KEY);
+  const data = await chrome.storage.local.get([STATE_KEY, JOB_KEY]);
   if (data[STATE_KEY] && Array.isArray(data[STATE_KEY].entries)) {
     state = data[STATE_KEY];
+  }
+  return data[JOB_KEY] ?? null;
+}
+
+function applyJobUi(job) {
+  if (!job || job.status === 'idle') {
+    els.progressWrap.classList.add('hidden');
+    return;
+  }
+
+  if (job.status === 'running') {
+    els.matchBtn.disabled = true;
+    els.scrapeBtn.disabled = true;
+    els.exportBtn.disabled = true;
+    els.progressWrap.classList.remove('hidden');
+    const pct = job.total > 0 ? Math.round((job.current / job.total) * 100) : 0;
+    els.progressFill.style.width = `${pct}%`;
+    els.progressText.textContent = `W tle: ${job.current} / ${job.total}${job.lastTitle ? ` (${job.lastTitle})` : ''}`;
+    return;
+  }
+
+  els.progressWrap.classList.add('hidden');
+  els.matchBtn.disabled = state.entries.length === 0;
+  checkActiveTab();
+
+  if (job.status === 'done') {
+    const matchedCount = state.entries.filter((e) => e.malId > 0).length;
+    showStatus(`Dopasowano ${matchedCount} z ${state.entries.length} pozycji. Możesz pobrać plik XML.`);
+  } else if (job.status === 'error') {
+    showStatus(`Błąd dopasowania: ${job.error || 'nieznany błąd'}`, true);
   }
 }
 
@@ -222,36 +253,11 @@ els.matchBtn.addEventListener('click', async () => {
   if (!state.entries.length) return;
   hideStatus();
 
-  els.matchBtn.disabled = true;
-  els.scrapeBtn.disabled = true;
-  els.exportBtn.disabled = true;
-  els.progressWrap.classList.remove('hidden');
-  els.progressFill.style.width = '0%';
-  els.progressText.textContent = `0 / ${state.entries.length}`;
-
-  try {
-    const response = await chrome.runtime.sendMessage({
-      type: 'MATCH_ANIME_LIST',
-      entries: state.entries,
-    });
-
-    if (!response?.ok) {
-      throw new Error(response?.error || 'Błąd podczas dopasowywania.');
-    }
-
-    state.entries = response.entries;
-    await saveState();
-    renderSummary();
-
-    const matchedCount = state.entries.filter((e) => e.malId > 0).length;
-    showStatus(`Dopasowano ${matchedCount} z ${state.entries.length} pozycji. Możesz pobrać plik XML.`);
-  } catch (err) {
-    showStatus(`Błąd dopasowania: ${err.message}`, true);
-  } finally {
-    els.matchBtn.disabled = false;
-    els.scrapeBtn.disabled = false;
-    els.progressWrap.classList.add('hidden');
-  }
+  await chrome.runtime.sendMessage({
+    type: 'START_MATCH_JOB',
+    entries: state.entries,
+    userName: state.userName,
+  });
 });
 
 els.exportBtn.addEventListener('click', () => {
@@ -272,16 +278,23 @@ els.exportBtn.addEventListener('click', () => {
   showStatus(`Wyeksportowano ${exportedCount} anime${skippedInfo}. Wgraj plik na myanimelist.net/import.php.`);
 });
 
-chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type === 'MATCH_PROGRESS') {
-    const pct = message.total > 0 ? Math.round((message.current / message.total) * 100) : 0;
-    els.progressFill.style.width = `${pct}%`;
-    els.progressText.textContent = `${message.current} / ${message.total}: ${message.lastTitle}`;
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'local') return;
+  if (changes[STATE_KEY]?.newValue) {
+    state = changes[STATE_KEY].newValue;
+    renderSummary();
+  }
+  if (changes[JOB_KEY]?.newValue) {
+    applyJobUi(changes[JOB_KEY].newValue);
   }
 });
 
 (async () => {
-  await loadState();
+  const job = await loadState();
   await checkActiveTab();
   renderSummary();
+  applyJobUi(job);
+  if (job?.status === 'done' || job?.status === 'error') {
+    chrome.runtime.sendMessage({ type: 'CLEAR_BADGE' }).catch(() => {});
+  }
 })();
