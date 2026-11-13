@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Shinden to MAL Exporter",
+  "version": "0.1.0",
+  "description": "Eksportuje listę anime (wszystkie statusy, oceny, odcinki) z lista.shinden.pl do formatu XML dla MyAnimeList.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://lista.shinden.pl/*",
+    "https://graphql.anilist.co/*",
+    "https://api.jikan.moe/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Shinden to MAL Exporter"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://lista.shinden.pl/animelist/*"
+      ],
+      "js": [
+        "src/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

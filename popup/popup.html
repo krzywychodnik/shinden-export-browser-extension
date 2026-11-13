@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shinden to MAL Exporter</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div>
+        <h1>Shinden → MAL</h1>
+        <p class="subtitle">Eksport listy anime do formatu XML</p>
+      </div>
+      <span id="userBadge" class="badge hidden"></span>
+    </header>
+
+    <div id="notShindenNotice" class="notice hidden">
+      Otwórz swoją listę na <strong>lista.shinden.pl/animelist/...</strong>, aby pobrać dane.
+      <button id="openShindenBtn" class="btn btn-secondary btn-sm">Otwórz Shinden</button>
+    </div>
+
+    <section class="actions">
+      <button id="scrapeBtn" class="btn btn-primary">1. Pobierz listę z Shindena</button>
+      <button id="matchBtn" class="btn btn-secondary" disabled>2. Dopasuj do MyAnimeList</button>
+      <button id="exportBtn" class="btn btn-success" disabled>3. Pobierz plik XML</button>
+    </section>
+
+    <div id="progressWrap" class="progress-wrap hidden">
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+      <div id="progressText" class="progress-text">0 / 0</div>
+    </div>
+
+    <div id="statusMessage" class="status-msg hidden"></div>
+    <pre id="debugBox" class="debug-box hidden"></pre>
+
+    <section id="summarySection" class="summary hidden">
+      <div class="chips" id="statusChips"></div>
+      <div class="filter-row">
+        <label class="filter-toggle">
+          <input type="checkbox" id="onlyIssuesCheckbox" />
+          Pokaż tylko niedopasowane / niepewne
+        </label>
+        <span id="matchStats" class="match-stats"></span>
+      </div>
+    </section>
+
+    <section id="listSection" class="list-section hidden">
+      <table class="entries-table">
+        <thead>
+          <tr>
+            <th>Shinden</th>
+            <th>Status / Ocena</th>
+            <th>MAL ID</th>
+          </tr>
+        </thead>
+        <tbody id="entriesBody"></tbody>
+      </table>
+    </section>
+
+    <footer class="footer">
+      Po wygenerowaniu wgraj plik na
+      <a href="https://myanimelist.net/import.php" target="_blank" rel="noreferrer">myanimelist.net/import.php</a>
+      (opcja <em>MyAnimeList Import</em>).
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
